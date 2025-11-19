@@ -17,7 +17,7 @@ function App() {
   
   // Dark Mode State
   const [isDark, setIsDark] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== undefined) {
       const saved = localStorage.getItem('medbox-theme');
       if (saved) return saved === 'dark';
       return window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -33,10 +33,19 @@ function App() {
     });
   };
 
+  useEffect(() => {
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('medbox-theme', 'dark')
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('medbox-theme', 'light')
+    }
+  })
+
   // Auth Listener
   useEffect(() => {
     if (!auth) {
-      // Should be caught by initializationError, but double check
       setAuthLoading(false);
       return;
     }
@@ -77,7 +86,6 @@ function App() {
   return (
     <div className={isDark ? 'dark' : ''}>
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-cyan-200 dark:selection:bg-cyan-900 transition-colors duration-300">
-        {/* Replace 'Router' with 'BrowserRouter' for production */}
         <Router>
           <Routes>
             <Route path="/login" element={

@@ -23,10 +23,8 @@ export default function Dashboard({ user }: { user: User }) {
     const commandRef = ref(db, 'dispense_commands');
 
     const newCommandRef = await push(commandRef, {
-        amounts: magazines.map(m => m === magazine ? 1 : 0),
+        amounts: magazines.map(m => ({magazineId: m.id, magazineName: m.name, amount: m === magazine ? 1 : 0})),
         timestamp: Date.now(),
-        userId: user.uid,
-        userEmail: user.email
       });
       console.log("Command sent with ID:", newCommandRef.key);
 

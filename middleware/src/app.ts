@@ -2,6 +2,7 @@ import mqttService from './services/mqttService';
 import { db, rtdb } from './services/firebase';
 import { initializeMagazines } from './services/initMagazines';
 import { registerPlanner } from './services/planner';
+import { dispense } from './services/dispense';
 
 
 
@@ -28,9 +29,8 @@ export const startDatabaseListener = () => {
     console.log(`New notification received [${key}]:`, data);
 
     try{
-        const ack = await mqttService.publishAndWaitForAck("01", "dispense", data.amounts, "medbox/01/dispensed");
-        console.log("Acknowledgment received:", ack);
-
+        console.log("event received: ", data)
+        await dispense(data) 
         await snapshot.ref.remove();
         console.log("Command successfully deleted.");
     }

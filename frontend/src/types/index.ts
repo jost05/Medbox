@@ -1,11 +1,15 @@
 import { Timestamp } from 'firebase/firestore'
 
+interface PlanItem {
+  magazineId: number | string;
+  magazineName: string;
+  amount: number;
+}
+
 export interface DispenseEvent {
   _id: string;
+  amounts: PlanItem[],
   type: 'Manual Dispense' | 'Scheduled Dispense';
-  magazineName: string;
-  magazineId: number;
-  scheduledAt: string;
-  status: 'PENDING' | 'COMPLETED';
-  createdAt?: Timestamp;
+  status: 'ERROR' | 'COMPLETED';
+  timestamp: number;
 }

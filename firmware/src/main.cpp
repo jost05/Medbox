@@ -34,6 +34,7 @@ void callback(char* topic, byte* message, unsigned int length) {
     Serial.println("dispense called");
     delay(3000);
     client.publish("medbox/01/dispensed", "true");
+    Serial.println("ack sent");
   }
 }
 
@@ -71,8 +72,8 @@ void reconnect() {
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
-      Serial.println(" try again in 5 seconds");
-      delay(5000);
+      Serial.println(" try again in 2 seconds");
+      delay(2000);
     }
   }
 }

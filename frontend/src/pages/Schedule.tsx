@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { type User } from 'firebase/auth';
-import type { Magazine } from '../../../types'; // Adjust path as needed
-import { firestore } from '../services/firebase'; // Adjust path as needed
+import type { Magazine } from '../../../types';
+import { firestore } from '../services/firebase';
 import { 
   collection, 
   query, 
@@ -22,7 +22,8 @@ import {
   CheckCircle2, 
   AlertCircle,
   Repeat,
-  CalendarDays
+  CalendarDays,
+  Loader2
 } from 'lucide-react';
 
 // --- Types ---
@@ -39,7 +40,6 @@ interface Plan {
   items?: PlanItem[];
   magazineName?: string;
   status: string;
-  // New Fields
   type: 'ONCE' | 'RECURRING';
   recurringDays?: number[]; // Array of integers 0-6 (Sun-Sat)
 }
@@ -65,7 +65,7 @@ function SchedulePage({ user }: { user: User }) {
   // Schedule Form State
   const [scheduleType, setScheduleType] = useState<'ONCE' | 'RECURRING'>('ONCE');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]); // YYYY-MM-DD
-  const [selectedDays, setSelectedDays] = useState<number[]>([]); // For recurring
+  const [selectedDays, setSelectedDays] = useState<number[]>([]); 
   const [time, setTime] = useState('');
   
   // UI State
@@ -89,7 +89,7 @@ function SchedulePage({ user }: { user: User }) {
     if (!firestore) return;
     const q = query(
       collection(firestore, 'plans'), 
-      where('status', '==', 'PENDING'),
+      where('status', 'in', ['PENDING', 'DISPENSING']),
       orderBy('scheduledAt', 'asc')
     );
 
@@ -148,14 +148,14 @@ function SchedulePage({ user }: { user: User }) {
             return candidate;
         }
     }
-    return null; // Should not happen if allowedDays is not empty
+    return null;
   };
 
-  const handlePlan = async (e: React.FormEvent) => {
+ const handlePlan = async (e: React.FormEvent) => {
     e.preventDefault();
     const selectedIds = Object.keys(selections);
     
-    // Validation
+    // 1. Basic Validation
     if (selectedIds.length === 0) {
         setErrorMsg("Please select at least one medication.");
         return;
@@ -175,19 +175,20 @@ function SchedulePage({ user }: { user: User }) {
     let finalDate: Date;
     const [hours, minutes] = time.split(':').map(Number);
 
-    // Calculate Date
+    // 2. Date Calculation & Past Validation
     if (scheduleType === 'ONCE') {
-        finalDate = new Date(selectedDate); // e.g., 2024-11-20
+        finalDate = new Date(selectedDate);
         finalDate.setHours(hours, minutes, 0, 0);
         
-        // If user selects today but time passed, warn or allow? 
-        // For now, we assume user knows what they are doing, but generally, events in past shouldn't be scheduled.
+        // CHECK: Is the date in the past?
         if (finalDate < new Date()) {
-             // Optional: Auto-move to tomorrow or error. 
-             // We'll just let it create for historical record or assume immediate dispense.
+             setErrorMsg("You cannot schedule a dispense in the past.");
+             setLoading(false);
+             return;
         }
+
     } else {
-        // Recurring
+        // Recurring logic
         const nextDate = getNextOccurrence(time, selectedDays);
         if (!nextDate) {
             setErrorMsg("Could not calculate next occurrence.");
@@ -197,6 +198,7 @@ function SchedulePage({ user }: { user: User }) {
         finalDate = nextDate;
     }
 
+    // 3. Prepare Items
     const itemsToDispense: PlanItem[] = selectedIds.map(id => {
         const mag = magazines.find(m => m.id.toString() === id);
         return {
@@ -206,6 +208,7 @@ function SchedulePage({ user }: { user: User }) {
         };
     });
 
+    // 4. Save to Firestore
     try {
         await addDoc(collection(firestore!, 'plans'), {
           type: scheduleType,
@@ -213,15 +216,14 @@ function SchedulePage({ user }: { user: User }) {
           scheduledAt: finalDate.toISOString(),
           status: 'PENDING',
           createdAt: serverTimestamp(),
-          // Save recurrence metadata
           recurringDays: scheduleType === 'RECURRING' ? selectedDays : null,
-          timeOfDay: time, // Helpful to keep original time preference
+          timeOfDay: time, 
         });
     
         setSuccessMsg('Schedule created!');
         setTimeout(() => setSuccessMsg(''), 3000);
         
-        // Reset
+        // Reset Form
         setTime('');
         setSelections({});
         setSelectedDays([]);
@@ -232,7 +234,7 @@ function SchedulePage({ user }: { user: User }) {
     } finally {
         setLoading(false);
     }
-  };
+  }; 
 
   const confirmDelete = async () => {
     if (!planToDelete) return;
@@ -342,7 +344,6 @@ function SchedulePage({ user }: { user: User }) {
                 className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 text-slate-700 dark:text-slate-200 cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:left-0"
                 required
             />
-            {/* Custom Calendar Icon Overlay */}
             <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                 <Calendar size={20} />
             </div>
@@ -417,7 +418,7 @@ function SchedulePage({ user }: { user: User }) {
         </div>
       </div>
 
-      {/* RIGHT COLUMN: The View List */}
+    {/* RIGHT COLUMN: The View List */}
       <div className="flex flex-col h-full">
          <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Upcoming Schedule</h2>
          
@@ -431,9 +432,10 @@ function SchedulePage({ user }: { user: User }) {
                 plans.map(plan => {
                     const date = new Date(plan.scheduledAt);
                     const isRecurring = plan.type === 'RECURRING';
+                    const isDispensing = plan.status === 'DISPENSING'; 
 
                     return (
-                        <div key={plan.id} className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 relative group">
+                        <div key={plan.id} className={`bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border relative group transition-colors ${isDispensing ? 'border-amber-300 dark:border-amber-700 ring-2 ring-amber-100 dark:ring-amber-900/30' : 'border-slate-100 dark:border-slate-700'}`}>
                             
                             {/* Header: Type & Time */}
                             <div className="flex items-start justify-between mb-4">
@@ -482,19 +484,28 @@ function SchedulePage({ user }: { user: User }) {
                                 ))}
                             </div>
 
-                            {/* Delete Action */}
-                            <button 
-                                onClick={() => setPlanToDelete(plan.id)}
-                                className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                            >
-                                <Trash2 size={16} />
-                            </button>
+                            {/* Status or Delete Action */}
+                            {isDispensing ? (
+                                <div className="absolute top-4 right-4">
+                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 animate-pulse border border-amber-200 dark:border-amber-800">
+                                        <Loader2 size={12} className="animate-spin" />
+                                        Dispensing...
+                                    </span>
+                                </div>
+                            ) : (
+                                <button 
+                                    onClick={() => setPlanToDelete(plan.id)}
+                                    className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
+                            )}
                         </div>
                     )
                 })
             )}
          </div>
-      </div>
+      </div> 
 
       {/* Modal - Same as before */}
       {planToDelete && (

@@ -1,8 +1,9 @@
 import { db } from './firebase';
+import {type Magazine } from '../../../types';
 
-const defaults = [
-  { id: 1, name: 'Morning Mix', type: 'Multivitamin', current: 15, color: 'bg-emerald-500' },
-  { id: 2, name: 'Pain Relief', type: 'Ibuprofen', current: 8, color: 'bg-amber-500' }
+const defaults: Magazine[] = [
+  { id: 1, name: 'Morning Mix', type: 'Multivitamin', percentage: 60, color: 'bg-emerald-500' },
+  { id: 2, name: 'Pain Relief', type: 'Ibuprofen', percentage: 20, color: 'bg-amber-500' }
 ];
 
 export const initializeMagazines = async () => {

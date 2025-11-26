@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { type User } from "firebase/auth";
 import { type DispenseEvent } from "../types";
-import { db, appId, firestore } from "../services/firebase";
+import { appId, firestore } from "../services/firebase";
 import { collection, query, orderBy, onSnapshot, doc, deleteDoc } from "firebase/firestore";
 import { History, Send, Clock, Trash2 } from "lucide-react";
 

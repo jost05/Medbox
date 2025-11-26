@@ -41,20 +41,45 @@ class MqttService {
     });
   }
 
-  public publishCommand(boxId: string, command: string, payload: object): void {
-    if (!this.client || !this.client.connected) {
-      console.warn('MQTT Client not connected. Cannot publish.');
-      return;
-    }
+  public publishAndWaitForAck(boxId: string, command: string, payload: object, ackTopic: string, timeout: number = 15000): Promise<string> {
+    return new Promise((resolve, reject) => {
+        if (!this.client || !this.client.connected) {
+            return reject('MQTT Client not connected.');
+        }
 
-    const topic = `medbox/${boxId}/${command}`;
+        const onMessage = (topic: string, message: Buffer) => {
+            if (topic === ackTopic) {
+                //  message on this topic is the ack
+                this.client?.removeListener('message', onMessage);
+                this.client?.unsubscribe(ackTopic);
+                resolve(message.toString());
+            }
+        };
+        
+        this.client?.subscribe(ackTopic, (err) => {
+            if (err) {
+                return reject(`Failed to subscribe to ${ackTopic}`);
+            }
+            
+            this.client?.on('message', onMessage);
 
-    this.client.publish(topic, JSON.stringify(payload), { qos: 1 }, (err) => {
-      if (err) {
-        console.error(`Failed to publish to ${topic}:`, err);
-      } else {
-        console.log(`📤 Sent payload to ${topic}`);
-      }
+            const topic = `medbox/${boxId}/${command}`;
+            this.client?.publish(topic, JSON.stringify(payload), { qos: 1 }, (err) => {
+                if (err) {
+                    this.client?.removeListener('message', onMessage);
+                    this.client?.unsubscribe(ackTopic);
+                    reject(`Failed to publish to ${topic}: ${err}`);
+                } else {
+                    console.log(`📤 Sent payload to ${topic}, waiting for ack on ${ackTopic}`);
+                }
+            });
+        });
+
+        setTimeout(() => {
+            this.client?.removeListener('message', onMessage);
+            this.client?.unsubscribe(ackTopic);
+            reject('Acknowledgment timed out.');
+        }, timeout);
     });
   }
 }

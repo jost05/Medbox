@@ -3,11 +3,11 @@ import { type User } from "firebase/auth";
 import { ref, push } from "firebase/database";
 import { db, firestore } from "../services/firebase";
 import { collection, query, orderBy, onSnapshot} from "firebase/firestore";
-import type { Magazine } from "../types/index";
+import type { Magazine } from "../../../types";
 import PillMagazine from "../components/PillMagazine";
 
 export default function Dashboard({ user }: { user: User }) {
-  const [magazines, setMagazines] = useState<Magazine[]>([{id: 1, _id:"tets", name: 'Morning Mix', type: 'Multivitamin', current: 20, color: 'bg-emerald-500'}]);
+  const [magazines, setMagazines] = useState<Magazine[]>([{id: 1, _id:"tets", name: 'Morning Mix', type: 'Multivitamin', percentage: 50, color: 'bg-emerald-500'}]);
 
 
   useEffect(() => {

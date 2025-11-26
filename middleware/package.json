@@ -10,7 +10,8 @@
   "dependencies": {
     "firebase": "^12.6.0",
     "firebase-admin": "^13.6.0",
-    "mqtt": "^5.14.1"
+    "mqtt": "^5.14.1",
+    "node-cron": "^4.2.1"
   },
   "devDependencies": {
     "@types/express": "^5.0.5",

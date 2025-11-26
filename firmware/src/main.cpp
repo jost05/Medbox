@@ -15,6 +15,8 @@ const int mqtt_port = 1883;
 WiFiClient espClient;
 PubSubClient client(espClient);
 
+bool dispenseRequested = false;
+
 void callback(char* topic, byte* message, unsigned int length) {
   Serial.print("Message arrived on topic: ");
   Serial.print(topic);
@@ -28,12 +30,10 @@ void callback(char* topic, byte* message, unsigned int length) {
   }
   Serial.println();
 
-  // Example: Control an LED based on the message
   if (String(topic) == "medbox/01/dispense") {
-      if(messageTemp == "on"){
-          Serial.println("dispense called");
-          // digitalWrite(LED_BUILTIN, HIGH);
-      }
+    Serial.println("dispense called");
+    delay(3000);
+    client.publish("medbox/01/dispensed", "true");
   }
 }
 
@@ -93,4 +93,6 @@ void loop() {
   }
 
   client.loop();
+
+ 
 }
